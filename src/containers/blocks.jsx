@@ -86,6 +86,7 @@ class Blocks extends React.Component {
         this.toolboxUpdateQueue = [];
     }
     componentDidMount () {
+        this.props.vm.addListener('BLOCK_DRAG_END', this.handleBlockDragEnd);
         this.ScratchBlocks.FieldColourSlider.activateEyedropper_ = this.props.onActivateColorPicker;
         this.ScratchBlocks.Procedures.externalProcedureDefCallback = this.props.onActivateCustomProcedures;
         this.ScratchBlocks.ScratchMsgs.setLocale(this.props.locale);
@@ -187,9 +188,24 @@ class Blocks extends React.Component {
         }
     }
     componentWillUnmount () {
+        this.props.vm.removeListener('BLOCK_DRAG_END', this.handleBlockDragEnd);
         this.detachVM();
         this.workspace.dispose();
         clearTimeout(this.toolboxUpdateTimeout);
+    }
+    handleBlockDragEnd (blocks) {
+      let blockList = [];
+      let i = 0;
+      console.log("Blocks used are:\n")
+        blocks.forEach(function(block,index){
+          if(!block['shadow']){
+            blockList[i] = block['opcode'];
+            i++;
+          }
+        });
+      blockList.forEach(function(block,index){
+        console.log(block);
+      });
     }
     requestToolboxUpdate () {
         clearTimeout(this.toolboxUpdateTimeout);
