@@ -78,7 +78,8 @@ class Blocks extends React.Component {
             'showBlocksUsed',
             'getNextBlockId',
             'getBlock',
-            'findEventFlagBlock'
+            'findEventFlagBlock',
+            'handleProjectStart'
         ]);
         this.ScratchBlocks.prompt = this.handlePromptStart;
         this.ScratchBlocks.statusButtonCallback = this.handleConnectionModalStart;
@@ -93,6 +94,7 @@ class Blocks extends React.Component {
     }
     componentDidMount () {
         this.props.vm.addListener('BLOCK_DRAG_UPDATE', this.handleBlockDragUpdate);
+        this.props.vm.addListener('PROJECT_START', this.handleProjectStart);
         this.ScratchBlocks.FieldColourSlider.activateEyedropper_ = this.props.onActivateColorPicker;
         this.ScratchBlocks.Procedures.externalProcedureDefCallback = this.props.onActivateCustomProcedures;
         this.ScratchBlocks.ScratchMsgs.setLocale(this.props.locale);
@@ -195,6 +197,7 @@ class Blocks extends React.Component {
     }
     componentWillUnmount () {
         this.props.vm.removeListener('BLOCK_DRAG_UPDATE', this.handleBlockDragUpdate);
+        this.props.vm.removeListener('PROJECT_START', this.handleProjectStart);
         this.detachVM();
         this.workspace.dispose();
         clearTimeout(this.toolboxUpdateTimeout);
@@ -233,7 +236,7 @@ class Blocks extends React.Component {
       if(!this.hasBeenAddedAlready(this.props.newblocklist, block)){
         this.props.newblocklist.push(block);
       }
-      this.showBlocksUsed(this.props.newblocklist);
+      // this.showBlocksUsed(this.props.newblocklist);
       // let i = 0;
       // console.log("Blocks used are:\n")
       //   blocks.forEach(function(block,index){
@@ -294,6 +297,9 @@ class Blocks extends React.Component {
           }
         });
       }
+    }
+    handleProjectStart(){
+      this.showBlocksUsed(this.props.newblocklist);
     }
     requestToolboxUpdate () {
         clearTimeout(this.toolboxUpdateTimeout);
