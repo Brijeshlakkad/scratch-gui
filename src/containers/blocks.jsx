@@ -293,7 +293,11 @@ class Blocks extends React.Component {
           while(nextBlockId != null){
             let block = _this.getBlock(newBlockList, nextBlockId);
             console.log(block['opcode']);
-            nextBlockId = _this.getNextBlockId(newBlockList, nextBlockId);
+            if(block['opcode'].startsWith('control') && block['inputs']['SUBSTACK'] != null){
+              nextBlockId = block['inputs']['SUBSTACK']['block'];
+            }else{
+              nextBlockId = _this.getNextBlockId(newBlockList, nextBlockId);
+            }
           }
         });
       }
