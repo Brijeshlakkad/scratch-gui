@@ -75,7 +75,10 @@ class Blocks extends React.Component {
             'setLocale',
             'handleBlockDragUpdate',
             'hasBeenAddedAlready',
-            'showBlocksUsed'
+            'showBlocksUsed',
+            'getNextBlockId',
+            'getBlock',
+            'findEventFlagBlock'
         ]);
         this.ScratchBlocks.prompt = this.handlePromptStart;
         this.ScratchBlocks.statusButtonCallback = this.handleConnectionModalStart;
@@ -221,11 +224,14 @@ class Blocks extends React.Component {
       return flag;
     }
     // handler of BLOCK_DRAG_UPDATE
-    handleBlockDragUpdate (areBlocksOverGui, block) {
-      if(!(block['opcode'] == "event_whenflagclicked")){
-        if(!this.hasBeenAddedAlready(this.props.newblocklist, block)){
-          this.props.newblocklist.push(block)
-        }
+    handleBlockDragUpdate (areBlocksOverGui, block, groupId) {
+      // if((this.props.newblocklist.length > 0) || (this.props.newblocklist.length == 0 && block['opcode'] == "event_whenflagclicked")){
+      //   if(!this.hasBeenAddedAlready(this.props.newblocklist, block)){
+      //     this.props.newblocklist.push(block);
+      //   }
+      // }
+      if(!this.hasBeenAddedAlready(this.props.newblocklist, block)){
+        this.props.newblocklist.push(block);
       }
       this.showBlocksUsed(this.props.newblocklist);
       // let i = 0;
@@ -240,11 +246,54 @@ class Blocks extends React.Component {
       //   console.log(block);
       // });
     }
-    showBlocksUsed(newblocklist){
-      console.log("Blocked used are:\n")
-      newblocklist.forEach(function(block,index){
-        console.log(block['opcode']);
-      })
+    getNextBlockId(newBlockList, blockId){
+      let nextBlockId;
+      newBlockList.forEach(function(newBlock,index){
+         if(newBlock['id'] == blockId){
+           nextBlockId = newBlock['next'];
+         }
+      });
+      return nextBlockId;
+    }
+    getBlock(newBlockList, blockId){
+      let block;
+      newBlockList.forEach(function(newBlock,index){
+         if(newBlock['id'] == blockId){
+           block = newBlock;
+         }
+      });
+      return block;
+    }
+    findEventFlagBlock(newBlockList){
+      let eventFlagBlockList = [];
+      // console.log("----Starting of findEventFlagBlock----");
+      newBlockList.forEach(function(newBlock,index){
+        // console.log(newBlock['opcode']);
+        if(newBlock['opcode']==='event_whenflagclicked'){
+          eventFlagBlockList.push(newBlock['id']);
+          // console.log('set'+eventFlagBlock);
+        }
+      });
+      // console.log("----End of findEventFlagBlock----");
+      return eventFlagBlockList;
+    }
+    showBlocksUsed(newBlockList){
+      let nextBlockId = null;
+      if(newBlockList != null){
+        let eventFlagBlockList = this.findEventFlagBlock(newBlockList);
+        let _this = this;
+        eventFlagBlockList.forEach(function(eventFlagBlock,index){
+          if(newBlockList != null){
+            console.log("Blocked used for event block "+(index+1)+" are:\n");
+            nextBlockId = _this.getNextBlockId(newBlockList, eventFlagBlock);
+          }
+          while(nextBlockId != null){
+            let block = _this.getBlock(newBlockList, nextBlockId);
+            console.log(block['opcode']);
+            nextBlockId = _this.getNextBlockId(newBlockList, nextBlockId);
+          }
+        });
+      }
     }
     requestToolboxUpdate () {
         clearTimeout(this.toolboxUpdateTimeout);
