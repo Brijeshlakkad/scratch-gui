@@ -72,7 +72,10 @@ class Blocks extends React.Component {
             'onWorkspaceUpdate',
             'onWorkspaceMetricsChange',
             'setBlocks',
-            'setLocale'
+            'setLocale',
+            'handleBlockDragUpdate',
+            'hasBeenAddedAlready',
+            'showBlocksUsed'
         ]);
         this.ScratchBlocks.prompt = this.handlePromptStart;
         this.ScratchBlocks.statusButtonCallback = this.handleConnectionModalStart;
@@ -86,7 +89,7 @@ class Blocks extends React.Component {
         this.toolboxUpdateQueue = [];
     }
     componentDidMount () {
-        this.props.vm.addListener('BLOCK_DRAG_END', this.handleBlockDragEnd);
+        this.props.vm.addListener('BLOCK_DRAG_UPDATE', this.handleBlockDragUpdate);
         this.ScratchBlocks.FieldColourSlider.activateEyedropper_ = this.props.onActivateColorPicker;
         this.ScratchBlocks.Procedures.externalProcedureDefCallback = this.props.onActivateCustomProcedures;
         this.ScratchBlocks.ScratchMsgs.setLocale(this.props.locale);
@@ -188,24 +191,60 @@ class Blocks extends React.Component {
         }
     }
     componentWillUnmount () {
-        this.props.vm.removeListener('BLOCK_DRAG_END', this.handleBlockDragEnd);
+        this.props.vm.removeListener('BLOCK_DRAG_UPDATE', this.handleBlockDragUpdate);
         this.detachVM();
         this.workspace.dispose();
         clearTimeout(this.toolboxUpdateTimeout);
     }
-    handleBlockDragEnd (blocks) {
-      let blockList = [];
-      let i = 0;
-      console.log("Blocks used are:\n")
-        blocks.forEach(function(block,index){
-          if(!block['shadow']){
-            blockList[i] = block['opcode'];
-            i++;
-          }
-        });
-      blockList.forEach(function(block,index){
-        console.log(block);
+    // isSameIndexElement(newblocklist, block, index){
+    //   // let flag = true;
+    //   if(newblocklist[index]==block['opcode']){
+    //     return true;
+    //   }
+    //   return false;
+    //   // newblocklist.forEach(function(newblock, index){
+    //   //   if(blockList[index] != newblock){
+    //   //     flag = false;
+    //   //   }
+    //   // });
+    //   // return flag;
+    // }
+
+    // To check if block exists on the list or not
+    hasBeenAddedAlready(newblocklist,block){
+      let flag = false;
+      newblocklist.forEach(function(newblock, index){
+        if(block['id'] == newblock['id']){
+          flag = true;
+        }
       });
+      return flag;
+    }
+    // handler of BLOCK_DRAG_UPDATE
+    handleBlockDragUpdate (areBlocksOverGui, block) {
+      if(!(block['opcode'] == "event_whenflagclicked")){
+        if(!this.hasBeenAddedAlready(this.props.newblocklist, block)){
+          this.props.newblocklist.push(block)
+        }
+      }
+      this.showBlocksUsed(this.props.newblocklist);
+      // let i = 0;
+      // console.log("Blocks used are:\n")
+      //   blocks.forEach(function(block,index){
+      //     if(!block['shadow']){
+      //       blockList[i] = block['opcode'];
+      //       i++;
+      //     }
+      //   });
+      // blockList.forEach(function(block,index){
+      //   console.log(block);
+      // });
+    }
+    showBlocksUsed(newblocklist){
+      console.log("Blocked used are:\n")
+      newblocklist.forEach(function(block,index){
+        console.log(block['opcode']);
+      })
     }
     requestToolboxUpdate () {
         clearTimeout(this.toolboxUpdateTimeout);
@@ -657,7 +696,8 @@ Blocks.defaultOptions = {
 
 Blocks.defaultProps = {
     isVisible: true,
-    options: Blocks.defaultOptions
+    options: Blocks.defaultOptions,
+    newblocklist: []
 };
 
 const mapStateToProps = state => ({
