@@ -82,7 +82,9 @@ class Blocks extends React.Component {
             'handleProjectStart',
             'handleBlockCreate',
             'makeTextFromCondition',
-            'getFieldChild'
+            'getFieldChild',
+            'parseOperandData',
+            'parseNumData'
         ]);
         this.ScratchBlocks.prompt = this.handlePromptStart;
         this.ScratchBlocks.statusButtonCallback = this.handleConnectionModalStart;
@@ -318,38 +320,20 @@ class Blocks extends React.Component {
       }
       return null;
     }
-    makeTextFromCondition(newBlockList,operandList){
+    makeTextFromCondition(newBlockList,operandList, inputName){
       let _this = this;
       let readableTextForThisBlockList = [];
       let readableTextForThisBlock;
       operandList.forEach(function(operandBlockId, index){
          let operandBlock = _this.getBlock(newBlockList, operandBlockId);
-         let operand = operandBlock['opcode'];
          let fieldChild = _this.getFieldChild(operandBlock);
          let inputChild = _this.getInputChild(operandBlock);
          if(fieldChild == undefined && inputChild){
-           let valueList = [];
-           readableTextForThisBlock = operand+" of ";
            if(inputChild['type']=='NUM'){
-             _this.numInputList.forEach(function(numInput, index){
-               valueList.push(operandBlock['inputs'][numInput]['block']);
-             })
+             readableTextForThisBlock = _this.parseNumData(newBlockList, operandBlock);
            }else if(inputChild['type']=='OPERAND'){
-             _this.operandInputList.forEach(function(operandInput, index){
-               valueList.push(operandBlock['inputs'][operandInput]['block']);
-             })
+             readableTextForThisBlock = _this.parseOperandData(newBlockList, operandBlock, inputName);
            }
-           valueList.forEach(function(numBlockId, index){
-             let numBlock = _this.getBlock(newBlockList, numBlockId);
-             let fieldChild = _this.getFieldChild(numBlock);
-             let numValue = numBlock['fields'][fieldChild]['value'];
-             let numName = numBlock['fields'][fieldChild]['name'];
-             if(index==0){
-               readableTextForThisBlock += numName+" '"+numValue+"' and ";
-             }else{
-               readableTextForThisBlock += numName+" "+numValue;
-             }
-           });
          }else{
            if(fieldChild){
              readableTextForThisBlock = operandBlock['fields'][fieldChild]['value'];
@@ -359,6 +343,46 @@ class Blocks extends React.Component {
          readableTextForThisBlock = '';
       });
       return readableTextForThisBlockList;
+    }
+    parseNumData(newBlockList, inputBlock){
+      let valueList = [];
+      let _this = this;
+      let operand = inputBlock['opcode'];
+      let readableTextForThisBlock = operand+" of ";
+      this.numInputList.forEach(function(numInput, index){
+        valueList.push(inputBlock['inputs'][numInput]['block']);
+      });
+      valueList.forEach(function(numBlockId, index){
+        let numBlock = _this.getBlock(newBlockList, numBlockId);
+        let fieldChild = _this.getFieldChild(numBlock);
+        let numValue = numBlock['fields'][fieldChild]['value'];
+        let numName = numBlock['fields'][fieldChild]['name'];
+        if(index==0){
+          readableTextForThisBlock += numName+" '"+numValue+"' and ";
+        }else{
+          readableTextForThisBlock += numName+" "+numValue;
+        }
+      });
+      return readableTextForThisBlock;
+    }
+    parseOperandData(newBlockList, inputBlock, inputName){
+      let operandList = [];
+      let conditionName = inputBlock['opcode'];
+      let readableTextForThisBlock = inputName + " of "+ conditionName + " on ";
+      let conditionInputChild = this.getInputChild(inputBlock);
+      if(conditionInputChild && conditionInputChild['type']=='OPERAND'){
+        this.operandInputList.forEach(function(operandInput, index){
+          operandList.push(inputBlock['inputs'][operandInput]['block']);
+        })
+      }
+      this.makeTextFromCondition(newBlockList,operandList, inputName).forEach(function(readBlock, index){
+        if(index==0){
+          readableTextForThisBlock += readBlock+" with "
+        }else{
+          readableTextForThisBlock += readBlock;
+        }
+      });
+      return readableTextForThisBlock;
     }
     showBlocksUsed(newBlockList){
       console.log("------------");
@@ -400,22 +424,7 @@ class Blocks extends React.Component {
                   }
                 }
                 if(block['inputs']['CONDITION'] != null){
-                  let conditionName = inputBlock['opcode'];
-                  readableTextForThisBlock += inputName + " of "+ conditionName+" on ";
-                  let operandList = [];
-                  let conditionInputChild = _this.getInputChild(inputBlock);
-                  if(conditionInputChild && conditionInputChild['type']=='OPERAND'){
-                    _this.operandInputList.forEach(function(operandInput, index){
-                      operandList.push(inputBlock['inputs'][operandInput]['block']);
-                    })
-                  }
-                  _this.makeTextFromCondition(newBlockList,operandList).forEach(function(readBlock, index){
-                    if(index==0){
-                      readableTextForThisBlock += readBlock+" with "
-                    }else{
-                      readableTextForThisBlock += readBlock;
-                    }
-                  });
+                  readableTextForThisBlock = _this.parseOperandData(newBlockList, inputBlock, inputName);
                 }
               }
             }
