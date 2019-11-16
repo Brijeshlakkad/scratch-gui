@@ -386,42 +386,37 @@ class Blocks extends React.Component {
               }
             }
             if(block['inputs'] != null){
-              if(block['inputs']['VALUE'] != null){
-                let inputBlockId = block['inputs']['VALUE']['block'];
-                let inputName = block['inputs']['VALUE']['name'];
+              let inputChild = _this.getInputChild(block);
+              if(inputChild){
+                let inputBlockId = block['inputs'][inputChild['childName']]['block'];
+                let inputName = block['inputs'][inputChild['childName']]['name'];
                 let inputBlock = _this.getBlock(newBlockList, inputBlockId);
-                let inputBlockName = inputBlock['fields']['TEXT']['name'];
-                let inputBlockValue = inputBlock['fields']['TEXT']['value'];
-                readableTextForThisBlock += inputName+" is "+inputBlockValue+"\n";
-              }
-              if(block['inputs']['STEPS'] != null){
-                let inputBlockId = block['inputs']['STEPS']['block'];
-                let inputName = block['inputs']['STEPS']['name'];
-                let inputBlock = _this.getBlock(newBlockList, inputBlockId);
-                let inputBlockName = inputBlock['fields']['NUM']['name'];
-                let inputBlockValue = inputBlock['fields']['NUM']['value'];
-                readableTextForThisBlock += inputName+" is "+inputBlockValue+"\n";
-              }
-              if(block['inputs']['CONDITION'] != null){
-                let inputBlockId = block['inputs']['CONDITION']['block'];
-                let inputName = block['inputs']['CONDITION']['name'];
-                let inputBlock = _this.getBlock(newBlockList, inputBlockId);
-                let conditionName = inputBlock['opcode'];
-                readableTextForThisBlock += inputName + " of "+ conditionName+" on ";
-                let operandList = [];
-                let conditionInputChild = _this.getInputChild(inputBlock);
-                if(conditionInputChild && conditionInputChild['type']=='OPERAND'){
-                  _this.operandInputList.forEach(function(operandInput, index){
-                    operandList.push(inputBlock['inputs'][operandInput]['block']);
-                  })
-                }
-                _this.makeTextFromCondition(newBlockList,operandList).forEach(function(readBlock, index){
-                  if(index==0){
-                    readableTextForThisBlock += readBlock+" with "
-                  }else{
-                    readableTextForThisBlock += readBlock;
+                if(inputChild['type']=='NORMAL'){
+                  let normalFieldChild = _this.getFieldChild(inputBlock);
+                  if(normalFieldChild){
+                    let inputBlockName = inputBlock['fields'][normalFieldChild]['name'];
+                    let inputBlockValue = inputBlock['fields'][normalFieldChild]['value'];
+                    readableTextForThisBlock += inputName+" is "+inputBlockValue+"\n";
                   }
-                });
+                }
+                if(block['inputs']['CONDITION'] != null){
+                  let conditionName = inputBlock['opcode'];
+                  readableTextForThisBlock += inputName + " of "+ conditionName+" on ";
+                  let operandList = [];
+                  let conditionInputChild = _this.getInputChild(inputBlock);
+                  if(conditionInputChild && conditionInputChild['type']=='OPERAND'){
+                    _this.operandInputList.forEach(function(operandInput, index){
+                      operandList.push(inputBlock['inputs'][operandInput]['block']);
+                    })
+                  }
+                  _this.makeTextFromCondition(newBlockList,operandList).forEach(function(readBlock, index){
+                    if(index==0){
+                      readableTextForThisBlock += readBlock+" with "
+                    }else{
+                      readableTextForThisBlock += readBlock;
+                    }
+                  });
+                }
               }
             }
             console.log(count+". "+block['opcode']+": "+readableTextForThisBlock);
