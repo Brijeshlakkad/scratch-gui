@@ -84,7 +84,8 @@ class Blocks extends React.Component {
             'makeTextFromCondition',
             'getFieldChild',
             'parseOperandData',
-            'parseNumData'
+            'parseNumData',
+            'parseFieldData'
         ]);
         this.ScratchBlocks.prompt = this.handlePromptStart;
         this.ScratchBlocks.statusButtonCallback = this.handleConnectionModalStart;
@@ -384,6 +385,11 @@ class Blocks extends React.Component {
       });
       return readableTextForThisBlock;
     }
+    parseFieldData(block, fieldChild){
+      let fieldName = block['fields'][fieldChild]['name'];
+      let fieldValue = block['fields'][fieldChild]['value'];
+      return fieldName+" is "+fieldValue+"\n";
+    }
     showBlocksUsed(newBlockList){
       console.log("------------");
       console.log(newBlockList);
@@ -404,9 +410,7 @@ class Blocks extends React.Component {
             if(block['fields'] != null){
               let fieldChild = _this.getFieldChild(block);
               if(fieldChild && block['fields'][fieldChild] != null){
-                let fieldName = block['fields'][fieldChild]['name'];
-                let fieldValue = block['fields'][fieldChild]['value'];
-                readableTextForThisBlock = fieldName+" is "+fieldValue+"\n";
+                readableTextForThisBlock = _this.parseFieldData(block, fieldChild);
               }
             }
             if(block['inputs'] != null){
@@ -418,12 +422,10 @@ class Blocks extends React.Component {
                 if(inputChild['type']=='NORMAL'){
                   let normalFieldChild = _this.getFieldChild(inputBlock);
                   if(normalFieldChild){
-                    let inputBlockName = inputBlock['fields'][normalFieldChild]['name'];
-                    let inputBlockValue = inputBlock['fields'][normalFieldChild]['value'];
-                    readableTextForThisBlock += inputName+" is "+inputBlockValue+"\n";
+                    readableTextForThisBlock = _this.parseFieldData(inputBlock, normalFieldChild);
                   }
                 }
-                if(block['inputs']['CONDITION'] != null){
+                if(inputChild['childName'] == 'CONDITION'){
                   readableTextForThisBlock = _this.parseOperandData(newBlockList, inputBlock, inputName);
                 }
               }
