@@ -79,7 +79,10 @@ class Blocks extends React.Component {
             'getNextBlockId',
             'getBlock',
             'findEventFlagBlock',
-            'handleProjectStart'
+            'handleProjectStart',
+            'handleBlockCreate',
+            'makeTextFromCondition',
+            'getFieldChild'
         ]);
         this.ScratchBlocks.prompt = this.handlePromptStart;
         this.ScratchBlocks.statusButtonCallback = this.handleConnectionModalStart;
@@ -91,10 +94,15 @@ class Blocks extends React.Component {
         };
         this.onTargetsUpdate = debounce(this.onTargetsUpdate, 100);
         this.toolboxUpdateQueue = [];
+        this.fieldChildren = ['VARIABLE','TEXT','NUM'];
+        this.inputChildren = ['VALUE','STEPS','CONDITION'];
+        this.operandInputList = ['OPERAND1','OPERAND2'];
+        this.numInputList = ['NUM1','NUM2'];
     }
     componentDidMount () {
         this.props.vm.addListener('BLOCK_DRAG_UPDATE', this.handleBlockDragUpdate);
         this.props.vm.addListener('PROJECT_START', this.handleProjectStart);
+        this.props.vm.addListener('BLOCK_CREATE', this.handleBlockCreate);
         this.ScratchBlocks.FieldColourSlider.activateEyedropper_ = this.props.onActivateColorPicker;
         this.ScratchBlocks.Procedures.externalProcedureDefCallback = this.props.onActivateCustomProcedures;
         this.ScratchBlocks.ScratchMsgs.setLocale(this.props.locale);
@@ -198,24 +206,18 @@ class Blocks extends React.Component {
     componentWillUnmount () {
         this.props.vm.removeListener('BLOCK_DRAG_UPDATE', this.handleBlockDragUpdate);
         this.props.vm.removeListener('PROJECT_START', this.handleProjectStart);
+        this.props.vm.removeListener('BLOCK_CREATE', this.handleBlockCreate);
         this.detachVM();
         this.workspace.dispose();
         clearTimeout(this.toolboxUpdateTimeout);
     }
-    // isSameIndexElement(newblocklist, block, index){
-    //   // let flag = true;
-    //   if(newblocklist[index]==block['opcode']){
-    //     return true;
-    //   }
-    //   return false;
-    //   // newblocklist.forEach(function(newblock, index){
-    //   //   if(blockList[index] != newblock){
-    //   //     flag = false;
-    //   //   }
-    //   // });
-    //   // return flag;
-    // }
-
+    handleBlockCreate(newBlocks){
+      console.log(newBlocks);
+      let _this = this;
+      newBlocks.forEach(function(newBlock, index){
+        _this.props.newblocklist.push(newBlock);
+      });
+    }
     // To check if block exists on the list or not
     hasBeenAddedAlready(newblocklist,block){
       let flag = false;
@@ -233,6 +235,7 @@ class Blocks extends React.Component {
       //     this.props.newblocklist.push(block);
       //   }
       // }
+      console.log(block);
       if(!this.hasBeenAddedAlready(this.props.newblocklist, block)){
         this.props.newblocklist.push(block);
       }
@@ -280,7 +283,87 @@ class Blocks extends React.Component {
       // console.log("----End of findEventFlagBlock----");
       return eventFlagBlockList;
     }
+    getFieldChild(block){
+      let fieldChildName;
+      this.fieldChildren.forEach(function(fieldChild, index){
+        if(block['fields'][fieldChild] != null){
+          fieldChildName = fieldChild;
+        }
+      });
+      return fieldChildName;
+    }
+    getInputChild(block){
+      let inputChildName;
+      let inputType;
+      this.inputChildren.forEach(function(inputChild, index){
+        if(block['inputs'][inputChild] != null){
+          inputChildName = inputChild;
+          inputType = 'NORMAL';
+        }
+      });
+      this.operandInputList.forEach(function(inputChild, index){
+        if(block['inputs'][inputChild] != null){
+          inputChildName = inputChild;
+          inputType = 'OPERAND';
+        }
+      });
+      this.numInputList.forEach(function(inputChild, index){
+        if(block['inputs'][inputChild] != null){
+          inputChildName = inputChild;
+          inputType = 'NUM';
+        }
+      });
+      if(inputType && inputChildName){
+        return {"type" : inputType,"childName" : inputChildName}
+      }
+      return null;
+    }
+    makeTextFromCondition(newBlockList,operandList){
+      let _this = this;
+      let readableTextForThisBlockList = [];
+      let readableTextForThisBlock;
+      operandList.forEach(function(operandBlockId, index){
+         let operandBlock = _this.getBlock(newBlockList, operandBlockId);
+         let operand = operandBlock['opcode'];
+         let fieldChild = _this.getFieldChild(operandBlock);
+         let inputChild = _this.getInputChild(operandBlock);
+         if(fieldChild == undefined && inputChild){
+           let valueList = [];
+           readableTextForThisBlock = operand+" of ";
+           if(inputChild['type']=='NUM'){
+             _this.numInputList.forEach(function(numInput, index){
+               valueList.push(operandBlock['inputs'][numInput]['block']);
+             })
+           }else if(inputChild['type']=='OPERAND'){
+             _this.operandInputList.forEach(function(operandInput, index){
+               valueList.push(operandBlock['inputs'][operandInput]['block']);
+             })
+           }
+           valueList.forEach(function(numBlockId, index){
+             let numBlock = _this.getBlock(newBlockList, numBlockId);
+             let fieldChild = _this.getFieldChild(numBlock);
+             let numValue = numBlock['fields'][fieldChild]['value'];
+             let numName = numBlock['fields'][fieldChild]['name'];
+             if(index==0){
+               readableTextForThisBlock += numName+" '"+numValue+"' and ";
+             }else{
+               readableTextForThisBlock += numName+" "+numValue;
+             }
+           });
+         }else{
+           if(fieldChild){
+             readableTextForThisBlock = operandBlock['fields'][fieldChild]['value'];
+           }
+         }
+         readableTextForThisBlockList.push(readableTextForThisBlock);
+         readableTextForThisBlock = '';
+      });
+      return readableTextForThisBlockList;
+    }
     showBlocksUsed(newBlockList){
+      console.log("------------");
+      console.log(newBlockList);
+      console.log("------------");
       let nextBlockId = null;
       if(newBlockList != null){
         let eventFlagBlockList = this.findEventFlagBlock(newBlockList);
@@ -290,14 +373,64 @@ class Blocks extends React.Component {
             console.log("Blocked used for event block "+(index+1)+" are:\n");
             nextBlockId = _this.getNextBlockId(newBlockList, eventFlagBlock);
           }
+          let count = 1;
           while(nextBlockId != null){
             let block = _this.getBlock(newBlockList, nextBlockId);
-            console.log(block['opcode']);
+            let readableTextForThisBlock = "";
+            if(block['fields'] != null){
+              let fieldChild = _this.getFieldChild(block);
+              if(fieldChild && block['fields'][fieldChild] != null){
+                let fieldName = block['fields'][fieldChild]['name'];
+                let fieldValue = block['fields'][fieldChild]['value'];
+                readableTextForThisBlock = fieldName+" is "+fieldValue+"\n";
+              }
+            }
+            if(block['inputs'] != null){
+              if(block['inputs']['VALUE'] != null){
+                let inputBlockId = block['inputs']['VALUE']['block'];
+                let inputName = block['inputs']['VALUE']['name'];
+                let inputBlock = _this.getBlock(newBlockList, inputBlockId);
+                let inputBlockName = inputBlock['fields']['TEXT']['name'];
+                let inputBlockValue = inputBlock['fields']['TEXT']['value'];
+                readableTextForThisBlock += inputName+" is "+inputBlockValue+"\n";
+              }
+              if(block['inputs']['STEPS'] != null){
+                let inputBlockId = block['inputs']['STEPS']['block'];
+                let inputName = block['inputs']['STEPS']['name'];
+                let inputBlock = _this.getBlock(newBlockList, inputBlockId);
+                let inputBlockName = inputBlock['fields']['NUM']['name'];
+                let inputBlockValue = inputBlock['fields']['NUM']['value'];
+                readableTextForThisBlock += inputName+" is "+inputBlockValue+"\n";
+              }
+              if(block['inputs']['CONDITION'] != null){
+                let inputBlockId = block['inputs']['CONDITION']['block'];
+                let inputName = block['inputs']['CONDITION']['name'];
+                let inputBlock = _this.getBlock(newBlockList, inputBlockId);
+                let conditionName = inputBlock['opcode'];
+                readableTextForThisBlock += inputName + " of "+ conditionName+" on ";
+                let operandList = [];
+                let conditionInputChild = _this.getInputChild(inputBlock);
+                if(conditionInputChild && conditionInputChild['type']=='OPERAND'){
+                  _this.operandInputList.forEach(function(operandInput, index){
+                    operandList.push(inputBlock['inputs'][operandInput]['block']);
+                  })
+                }
+                _this.makeTextFromCondition(newBlockList,operandList).forEach(function(readBlock, index){
+                  if(index==0){
+                    readableTextForThisBlock += readBlock+" with "
+                  }else{
+                    readableTextForThisBlock += readBlock;
+                  }
+                });
+              }
+            }
+            console.log(count+". "+block['opcode']+": "+readableTextForThisBlock);
             if(block['opcode'].startsWith('control') && block['inputs']['SUBSTACK'] != null){
               nextBlockId = block['inputs']['SUBSTACK']['block'];
             }else{
               nextBlockId = _this.getNextBlockId(newBlockList, nextBlockId);
             }
+            count++;
           }
         });
       }
