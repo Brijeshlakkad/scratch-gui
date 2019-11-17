@@ -78,14 +78,19 @@ class Blocks extends React.Component {
             'showBlocksUsed',
             'getNextBlockId',
             'getBlock',
-            'findEventFlagBlock',
+            'findStartingBlock',
             'handleProjectStart',
             'handleBlockCreate',
             'makeTextFromCondition',
             'getFieldChild',
             'parseOperandData',
             'parseNumData',
-            'parseFieldData'
+            'parseFieldData',
+            'parseBlock',
+            'parseBlockWith',
+            'parseProceduresCallBlock',
+            'getProcedureOpcode',
+            'parseNormalBlock',
         ]);
         this.ScratchBlocks.prompt = this.handlePromptStart;
         this.ScratchBlocks.statusButtonCallback = this.handleConnectionModalStart;
@@ -97,10 +102,11 @@ class Blocks extends React.Component {
         };
         this.onTargetsUpdate = debounce(this.onTargetsUpdate, 100);
         this.toolboxUpdateQueue = [];
-        this.fieldChildren = ['VARIABLE','TEXT','NUM'];
-        this.inputChildren = ['VALUE','STEPS','CONDITION'];
+        this.fieldChildren = ['VARIABLE','TEXT','NUM', 'VALUE'];
+        this.inputChildren = ['VALUE','STEPS','CONDITION','MESSAGE','SECS'];
         this.operandInputList = ['OPERAND1','OPERAND2'];
         this.numInputList = ['NUM1','NUM2'];
+        this.procedureList = ['procedures_call','procedures_definition','procedures_prototype'];
     }
     componentDidMount () {
         this.props.vm.addListener('BLOCK_DRAG_UPDATE', this.handleBlockDragUpdate);
@@ -273,12 +279,12 @@ class Blocks extends React.Component {
       });
       return block;
     }
-    findEventFlagBlock(newBlockList){
+    findStartingBlock(newBlockList, blockOpcode){
       let eventFlagBlockList = [];
       // console.log("----Starting of findEventFlagBlock----");
       newBlockList.forEach(function(newBlock,index){
         // console.log(newBlock['opcode']);
-        if(newBlock['opcode']==='event_whenflagclicked'){
+        if(newBlock['opcode']===blockOpcode){
           eventFlagBlockList.push(newBlock['id']);
           // console.log('set'+eventFlagBlock);
         }
@@ -296,45 +302,53 @@ class Blocks extends React.Component {
       return fieldChildName;
     }
     getInputChild(block){
-      let inputChildName;
+      let inputChildList = [];
       let inputType;
       this.inputChildren.forEach(function(inputChild, index){
         if(block['inputs'][inputChild] != null){
-          inputChildName = inputChild;
           inputType = 'NORMAL';
+          inputChildList.push({"type" : inputType,"childName" : inputChild});
         }
       });
       this.operandInputList.forEach(function(inputChild, index){
         if(block['inputs'][inputChild] != null){
-          inputChildName = inputChild;
           inputType = 'OPERAND';
+          inputChildList.push({"type" : inputType,"childName" : inputChild});
         }
       });
       this.numInputList.forEach(function(inputChild, index){
         if(block['inputs'][inputChild] != null){
-          inputChildName = inputChild;
           inputType = 'NUM';
+          inputChildList.push({"type" : inputType,"childName" : inputChild});
         }
       });
-      if(inputType && inputChildName){
-        return {"type" : inputType,"childName" : inputChildName}
-      }
-      return null;
+      return inputChildList;
     }
-    makeTextFromCondition(newBlockList,operandList, inputName){
+    getProcedureOpcode(block){
+      let inputChildName;
+      this.procedureList.forEach(function(inputChild, index){
+        if(block['opcode'] == inputChild){
+          inputChildName = inputChild;
+        }
+      });
+      return inputChildName;
+    }
+    makeTextFromCondition(newBlockList, operandList, inputName){
       let _this = this;
       let readableTextForThisBlockList = [];
       let readableTextForThisBlock;
       operandList.forEach(function(operandBlockId, index){
          let operandBlock = _this.getBlock(newBlockList, operandBlockId);
          let fieldChild = _this.getFieldChild(operandBlock);
-         let inputChild = _this.getInputChild(operandBlock);
-         if(fieldChild == undefined && inputChild){
-           if(inputChild['type']=='NUM'){
-             readableTextForThisBlock = _this.parseNumData(newBlockList, operandBlock);
-           }else if(inputChild['type']=='OPERAND'){
-             readableTextForThisBlock = _this.parseOperandData(newBlockList, operandBlock, inputName);
-           }
+         let inputChildList = _this.getInputChild(operandBlock);
+         if(fieldChild == undefined && inputChildList){
+           inputChildList.forEach(function(inputChild, index){
+             if(inputChild['type']=='NUM'){
+               readableTextForThisBlock = _this.parseNumData(newBlockList, operandBlock);
+             }else if(inputChild['type']=='OPERAND'){
+               readableTextForThisBlock = _this.parseOperandData(newBlockList, operandBlock, inputName);
+             }
+           });
          }else{
            if(fieldChild){
              readableTextForThisBlock = operandBlock['fields'][fieldChild]['value'];
@@ -370,8 +384,8 @@ class Blocks extends React.Component {
       let operandList = [];
       let conditionName = inputBlock['opcode'];
       let readableTextForThisBlock = inputName + " of "+ conditionName + " on ";
-      let conditionInputChild = this.getInputChild(inputBlock);
-      if(conditionInputChild && conditionInputChild['type']=='OPERAND'){
+      let conditionInputChildList = this.getInputChild(inputBlock);
+      if(conditionInputChildList && conditionInputChildList[0]['type']=='OPERAND'){
         this.operandInputList.forEach(function(operandInput, index){
           operandList.push(inputBlock['inputs'][operandInput]['block']);
         })
@@ -390,54 +404,130 @@ class Blocks extends React.Component {
       let fieldValue = block['fields'][fieldChild]['value'];
       return fieldName+" is "+fieldValue+"\n";
     }
+    parseProceduresCallBlock(newBlockList, block){
+      let readableTextForThisBlock = '';
+      let argumentids = JSON.parse(block['mutation']['argumentids']);
+      let _this = this;
+      argumentids.forEach(function(argumentId, index){
+        let childBlock = _this.getBlock(newBlockList,block['inputs'][argumentId]['block']);
+        let fieldChild = _this.getFieldChild(childBlock);
+        if(fieldChild && childBlock['fields'][fieldChild] != null){
+          readableTextForThisBlock += _this.parseFieldData(childBlock, fieldChild);
+        }
+      });
+      let proccode = block['mutation']['proccode'];
+      let procedureNamePattern = /([a-zA-Z_{1}][a-zA-Z0-9_]+?)\s/;
+      let result = proccode.match(procedureNamePattern);
+      readableTextForThisBlock = result[0]+" procedure has "+argumentids.length+" arguments"+", which are:\n"+readableTextForThisBlock;
+      return readableTextForThisBlock;
+    }
+    parseNormalBlock(newBlockList, block){
+      let readableTextForThisBlock = '';
+      let _this = this;
+      if(block['fields'] != null){
+        let fieldChild = this.getFieldChild(block);
+        if(fieldChild && block['fields'][fieldChild] != null){
+          readableTextForThisBlock += this.parseFieldData(block, fieldChild);
+        }
+      }
+      if(block['inputs'] != null){
+        let inputChildList = this.getInputChild(block);
+        if(inputChildList){
+          inputChildList.forEach(function(inputChild, index){
+            let inputBlockId = block['inputs'][inputChild['childName']]['block'];
+            let inputName = block['inputs'][inputChild['childName']]['name'];
+            let inputBlock = _this.getBlock(newBlockList, inputBlockId);
+            if(inputChild['type']=='NORMAL'){
+              let normalFieldChild = _this.getFieldChild(inputBlock);
+              if(normalFieldChild && inputBlock['fields'][normalFieldChild] != null){
+                readableTextForThisBlock += _this.parseFieldData(inputBlock, normalFieldChild);
+              }
+            }
+            if(inputChild['childName'] == 'CONDITION'){
+              readableTextForThisBlock += _this.parseOperandData(newBlockList, inputBlock, inputName);
+            }
+          });
+        }
+      }
+      return readableTextForThisBlock;
+    }
+    parseBlock(newBlockList, block){
+      let child = this.getProcedureOpcode(block);
+      if(child){
+        if(child == "procedures_definition"){
+          return this.parseBlock(newBlockList, this.getBlock(newBlockList, block['inputs']['custom_block']['block']));
+        }
+        return this.parseProceduresCallBlock(newBlockList, block);
+      }else{
+        return this.parseNormalBlock(newBlockList, block);
+      }
+    }
+    // handleSubstackCallCount(callCount, isSubstack){
+    //   if(isSubstack){
+    //     if(typeof callCount[callCount.length-1] == 'object'){
+    //       if(callCount[callCount.length-1].length>0){
+    //         callCount[callCount.length-1] = this.handleSubstackCallCount(callCount[callCount.length-1], isSubstack);
+    //       }
+    //     }else if(typeof callCount[callCount.length-1] == 'number'){
+    //       callCount[callCount.length-1] = [0,1];
+    //     }else{
+    //       callCount.push(callCount.length);
+    //     }
+    //   }else{
+    //     callCount.push(callCount.length);
+    //   }
+    //   return callCount;
+    // }
+    // handleNormalCallCount(callCount){
+    //   callCount.push(callCount.length);
+    //   return callCount;
+    // }
+    parseBlockWith(newBlockList, blockId, count, callCount, isSubstack){
+      if(blockId){
+        let nextBlockId;
+        let prevBlockId = blockId;
+        let block = this.getBlock(newBlockList, blockId);
+        // console.log(block);
+        let readableTextForThisBlock = this.parseBlock(newBlockList, block);
+        console.log(count+"."+callCount+". "+block['opcode']+": "+readableTextForThisBlock);
+        if(block['inputs']['SUBSTACK'] != null){
+          // console.log("SUBSTACK: "+blockId);
+          nextBlockId = this.parseBlockWith(newBlockList, block['inputs']['SUBSTACK']['block'], 1, callCount+1, true);
+          // console.log("SUBSTACK: "+nextBlockId);
+        }
+        if(block['next'] != null){
+          // console.log("NORMAL: "+blockId);
+          nextBlockId = this.parseBlockWith(newBlockList, this.getNextBlockId(newBlockList, blockId), count+1, callCount, isSubstack);
+          // console.log("NORMAL: "+nextBlockId);
+        }
+        if(isSubstack){
+          callCount--;
+        }
+        return nextBlockId;
+      }
+      return null;
+    }
     showBlocksUsed(newBlockList){
       console.log("------------");
       console.log(newBlockList);
       console.log("------------");
       let nextBlockId = null;
       if(newBlockList != null){
-        let eventFlagBlockList = this.findEventFlagBlock(newBlockList);
+        let eventFlagBlockList = this.findStartingBlock(newBlockList, 'event_whenflagclicked');
         let _this = this;
-        eventFlagBlockList.forEach(function(eventFlagBlock,index){
+        eventFlagBlockList.forEach(function(eventFlagBlockId,index){
           if(newBlockList != null){
             console.log("Blocked used for event block "+(index+1)+" are:\n");
-            nextBlockId = _this.getNextBlockId(newBlockList, eventFlagBlock);
+            nextBlockId = _this.getNextBlockId(newBlockList, eventFlagBlockId);
           }
-          let count = 1;
-          while(nextBlockId != null){
-            let block = _this.getBlock(newBlockList, nextBlockId);
-            let readableTextForThisBlock = "";
-            if(block['fields'] != null){
-              let fieldChild = _this.getFieldChild(block);
-              if(fieldChild && block['fields'][fieldChild] != null){
-                readableTextForThisBlock = _this.parseFieldData(block, fieldChild);
-              }
-            }
-            if(block['inputs'] != null){
-              let inputChild = _this.getInputChild(block);
-              if(inputChild){
-                let inputBlockId = block['inputs'][inputChild['childName']]['block'];
-                let inputName = block['inputs'][inputChild['childName']]['name'];
-                let inputBlock = _this.getBlock(newBlockList, inputBlockId);
-                if(inputChild['type']=='NORMAL'){
-                  let normalFieldChild = _this.getFieldChild(inputBlock);
-                  if(normalFieldChild){
-                    readableTextForThisBlock = _this.parseFieldData(inputBlock, normalFieldChild);
-                  }
-                }
-                if(inputChild['childName'] == 'CONDITION'){
-                  readableTextForThisBlock = _this.parseOperandData(newBlockList, inputBlock, inputName);
-                }
-              }
-            }
-            console.log(count+". "+block['opcode']+": "+readableTextForThisBlock);
-            if(block['opcode'].startsWith('control') && block['inputs']['SUBSTACK'] != null){
-              nextBlockId = block['inputs']['SUBSTACK']['block'];
-            }else{
-              nextBlockId = _this.getNextBlockId(newBlockList, nextBlockId);
-            }
-            count++;
+          _this.parseBlockWith(newBlockList, nextBlockId, 1, 0, false);
+        });
+        let procedureBlockList = this.findStartingBlock(newBlockList, 'procedures_definition');
+        procedureBlockList.forEach(function(procedureBlockId,index){
+          if(newBlockList != null){
+            console.log("Blocked used for procedure  "+(index+1)+" are:\n");
           }
+          _this.parseBlockWith(newBlockList, procedureBlockId, 1, 0, false);
         });
       }
     }
