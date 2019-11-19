@@ -244,7 +244,7 @@ class Blocks extends React.Component {
       //     this.props.newblocklist.push(block);
       //   }
       // }
-      console.log(block);
+      // console.log(block);
       if(!this.hasBeenAddedAlready(this.props.newblocklist, block)){
         this.props.newblocklist.push(block);
       }
@@ -508,9 +508,9 @@ class Blocks extends React.Component {
       return null;
     }
     showBlocksUsed(newBlockList){
-      console.log("------------");
-      console.log(newBlockList);
-      console.log("------------");
+      // console.log("------------");
+      // console.log(newBlockList);
+      // console.log("------------");
       let nextBlockId = null;
       if(newBlockList != null){
         let eventFlagBlockList = this.findStartingBlock(newBlockList, 'event_whenflagclicked');
