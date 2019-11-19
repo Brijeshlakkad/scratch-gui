@@ -221,7 +221,7 @@ class Blocks extends React.Component {
         clearTimeout(this.toolboxUpdateTimeout);
     }
     handleBlockCreate(newBlocks){
-      console.log(newBlocks);
+      // console.log(newBlocks);
       let _this = this;
       newBlocks.forEach(function(newBlock, index){
         _this.props.newblocklist.push(newBlock);
