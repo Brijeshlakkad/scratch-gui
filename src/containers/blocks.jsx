@@ -91,6 +91,7 @@ class Blocks extends React.Component {
             'parseProceduresCallBlock',
             'getProcedureOpcode',
             'parseNormalBlock',
+            'handleCallCount'
         ]);
         this.ScratchBlocks.prompt = this.handlePromptStart;
         this.ScratchBlocks.statusButtonCallback = this.handleConnectionModalStart;
@@ -103,7 +104,7 @@ class Blocks extends React.Component {
         this.onTargetsUpdate = debounce(this.onTargetsUpdate, 100);
         this.toolboxUpdateQueue = [];
         this.fieldChildren = ['VARIABLE','TEXT','NUM', 'VALUE'];
-        this.inputChildren = ['VALUE','STEPS','CONDITION','MESSAGE','SECS'];
+        this.inputChildren = ['VALUE','STEPS','CONDITION','MESSAGE','SECS','TIMES'];
         this.operandInputList = ['OPERAND1','OPERAND2'];
         this.numInputList = ['NUM1','NUM2'];
         this.procedureList = ['procedures_call','procedures_definition','procedures_prototype'];
@@ -238,13 +239,14 @@ class Blocks extends React.Component {
       return flag;
     }
     // handler of BLOCK_DRAG_UPDATE
-    handleBlockDragUpdate (areBlocksOverGui, block, groupId) {
+    handleBlockDragUpdate (areBlocksOverGui, block) {
       // if((this.props.newblocklist.length > 0) || (this.props.newblocklist.length == 0 && block['opcode'] == "event_whenflagclicked")){
       //   if(!this.hasBeenAddedAlready(this.props.newblocklist, block)){
       //     this.props.newblocklist.push(block);
       //   }
       // }
       // console.log(block);
+      console.log(block);
       if(!this.hasBeenAddedAlready(this.props.newblocklist, block)){
         this.props.newblocklist.push(block);
       }
@@ -462,46 +464,40 @@ class Blocks extends React.Component {
         return this.parseNormalBlock(newBlockList, block);
       }
     }
-    // handleSubstackCallCount(callCount, isSubstack){
-    //   if(isSubstack){
-    //     if(typeof callCount[callCount.length-1] == 'object'){
-    //       if(callCount[callCount.length-1].length>0){
-    //         callCount[callCount.length-1] = this.handleSubstackCallCount(callCount[callCount.length-1], isSubstack);
-    //       }
-    //     }else if(typeof callCount[callCount.length-1] == 'number'){
-    //       callCount[callCount.length-1] = [0,1];
-    //     }else{
-    //       callCount.push(callCount.length);
-    //     }
-    //   }else{
-    //     callCount.push(callCount.length);
-    //   }
-    //   return callCount;
-    // }
-    // handleNormalCallCount(callCount){
-    //   callCount.push(callCount.length);
-    //   return callCount;
-    // }
+    handleCallCount(count){
+      let printableCallCount = "";
+      while(count>0){
+        printableCallCount+="\t";
+        count--;
+      }
+      return printableCallCount;
+    }
     parseBlockWith(newBlockList, blockId, count, callCount, isSubstack){
       if(blockId){
         let nextBlockId;
         let prevBlockId = blockId;
         let block = this.getBlock(newBlockList, blockId);
-        // console.log(block);
         let readableTextForThisBlock = this.parseBlock(newBlockList, block);
-        console.log(count+"."+callCount+". "+block['opcode']+": "+readableTextForThisBlock);
+        let printableCallCount = this.handleCallCount(callCount[callCount.length-1]);
+        console.log(printableCallCount+count+". "+block['opcode']+": "+readableTextForThisBlock);
         if(block['inputs']['SUBSTACK'] != null){
+          let newCallCount = [];
+          callCount.forEach(function(ele,index){
+            newCallCount.push(ele);
+          });
+          newCallCount.push(callCount.length);
           // console.log("SUBSTACK: "+blockId);
-          nextBlockId = this.parseBlockWith(newBlockList, block['inputs']['SUBSTACK']['block'], 1, callCount+1, true);
+          nextBlockId = this.parseBlockWith(newBlockList, block['inputs']['SUBSTACK']['block'], 1, newCallCount, true);
           // console.log("SUBSTACK: "+nextBlockId);
         }
         if(block['next'] != null){
+          let newCallCount = [];
+          callCount.forEach(function(ele,index){
+            newCallCount.push(ele);
+          });
           // console.log("NORMAL: "+blockId);
-          nextBlockId = this.parseBlockWith(newBlockList, this.getNextBlockId(newBlockList, blockId), count+1, callCount, isSubstack);
+          nextBlockId = this.parseBlockWith(newBlockList, this.getNextBlockId(newBlockList, blockId), count+1, newCallCount, false);
           // console.log("NORMAL: "+nextBlockId);
-        }
-        if(isSubstack){
-          callCount--;
         }
         return nextBlockId;
       }
@@ -520,14 +516,14 @@ class Blocks extends React.Component {
             console.log("Blocked used for event block "+(index+1)+" are:\n");
             nextBlockId = _this.getNextBlockId(newBlockList, eventFlagBlockId);
           }
-          _this.parseBlockWith(newBlockList, nextBlockId, 1, 0, false);
+          _this.parseBlockWith(newBlockList, nextBlockId, 1, [0], false);
         });
         let procedureBlockList = this.findStartingBlock(newBlockList, 'procedures_definition');
         procedureBlockList.forEach(function(procedureBlockId,index){
           if(newBlockList != null){
             console.log("Blocked used for procedure  "+(index+1)+" are:\n");
           }
-          _this.parseBlockWith(newBlockList, procedureBlockId, 1, 0, false);
+          _this.parseBlockWith(newBlockList, procedureBlockId, 1, [0], false);
         });
       }
     }
