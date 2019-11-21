@@ -176,6 +176,7 @@ class MenuBar extends React.Component {
         this.props.onRequestCloseFile();
         if (readyToReplaceProject) {
             this.props.onClickNew(this.props.canSave && this.props.canCreateNew);
+            this.props.onCreateNewProject();
         }
         this.props.onRequestCloseFile();
     }
@@ -751,7 +752,8 @@ MenuBar.propTypes = {
     showComingSoon: PropTypes.bool,
     userOwnsProject: PropTypes.bool,
     username: PropTypes.string,
-    vm: PropTypes.instanceOf(VM).isRequired
+    vm: PropTypes.instanceOf(VM).isRequired,
+    onCreateNewProject: PropTypes.func
 };
 
 MenuBar.defaultProps = {
