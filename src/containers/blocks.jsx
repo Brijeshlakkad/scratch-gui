@@ -86,9 +86,9 @@ class Blocks extends React.Component {
         this.toolboxUpdateQueue = [];
     }
     componentDidMount () {
-        this.props.vm.addListener('BLOCK_DRAG_UPDATE', this.props.handleBlockDragUpdate);
-        this.props.vm.addListener('PROJECT_START', this.props.handleProjectStart);
-        this.props.vm.addListener('BLOCK_CREATE', this.props.handleBlockCreate);
+        // this.props.vm.addListener('BLOCK_DRAG_UPDATE', this.props.handleBlockDragUpdate);
+        // this.props.vm.addListener('PROJECT_START', this.props.handleProjectStart);
+        // this.props.vm.addListener('BLOCK_CREATE', this.props.handleBlockCreate);
         this.ScratchBlocks.FieldColourSlider.activateEyedropper_ = this.props.onActivateColorPicker;
         this.ScratchBlocks.Procedures.externalProcedureDefCallback = this.props.onActivateCustomProcedures;
         this.ScratchBlocks.ScratchMsgs.setLocale(this.props.locale);
@@ -190,9 +190,9 @@ class Blocks extends React.Component {
         }
     }
     componentWillUnmount () {
-        this.props.vm.removeListener('BLOCK_DRAG_UPDATE', this.props.handleBlockDragUpdate);
-        this.props.vm.removeListener('PROJECT_START', this.props.handleProjectStart);
-        this.props.vm.removeListener('BLOCK_CREATE', this.props.handleBlockCreate);
+        // this.props.vm.removeListener('BLOCK_DRAG_UPDATE', this.props.handleBlockDragUpdate);
+        // this.props.vm.removeListener('PROJECT_START', this.props.handleProjectStart);
+        // this.props.vm.removeListener('BLOCK_CREATE', this.props.handleBlockCreate);
         this.detachVM();
         this.workspace.dispose();
         clearTimeout(this.toolboxUpdateTimeout);

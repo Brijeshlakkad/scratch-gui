@@ -6,6 +6,7 @@ import ReactModal from 'react-modal';
 import VM from 'scratch-vm';
 import {injectIntl, intlShape} from 'react-intl';
 
+import TourHOC from '../lib/tour-hoc'
 import ErrorBoundaryHOC from '../lib/error-boundary-hoc.jsx';
 import {
     getIsError,
@@ -44,6 +45,8 @@ class GUI extends React.Component {
         setIsScratchDesktop(this.props.isScratchDesktop);
         this.props.onStorageInit(storage);
         this.props.onVmInit(this.props.vm);
+        // props.updateAllowToRun(true)
+        // props.startTour()
     }
     componentDidUpdate (prevProps) {
         if (this.props.projectId !== prevProps.projectId && this.props.projectId !== null) {
@@ -180,6 +183,7 @@ const WrappedGui = compose(
     TitledHOC,
     ProjectSaverHOC,
     vmListenerHOC,
+    TourHOC,
     vmManagerHOC,
     cloudManagerHOC
 )(ConnectedGUI);

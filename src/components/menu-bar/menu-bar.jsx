@@ -648,7 +648,7 @@ class MenuBar extends React.Component {
                             {this.props.showComingSoon ? (
                                 <React.Fragment>
                                     <MenuBarItemTooltip id="mystuff">
-                                        <div
+                                        <div data-tour={"second-step"}
                                             className={classNames(
                                                 styles.menuBarItem,
                                                 styles.hoverable,

@@ -12,7 +12,7 @@ import {setProjectChanged, setProjectUnchanged} from '../reducers/project-change
 import {setRunningState, setTurboState, setStartedState} from '../reducers/vm-status';
 import {showExtensionAlert} from '../reducers/alerts';
 import {updateMicIndicator} from '../reducers/mic-indicator';
-
+import {updateLatestBLock} from "../reducers/tour";
 /*
  * Higher Order Component to manage events emitted by the VM
  * @param {React.Component} WrappedComponent component to manage VM events for
@@ -188,6 +188,7 @@ const vmListenerHOC = function (WrappedComponent) {
             dispatch(updateMonitors(monitorList));
         },
         onBlockDragUpdate: areBlocksOverGui => {
+            dispatch(updateLatestBLock())
             dispatch(updateBlockDrag(areBlocksOverGui));
         },
         onProjectRunStart: () => dispatch(setRunningState(true)),
