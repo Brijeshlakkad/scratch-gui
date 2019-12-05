@@ -136,7 +136,7 @@ const TourHOC = function (WrappedComponent) {
 
         handleJoyrideCallback(data) {
             const {action, index, status, type} = data;
-            const {latestBlock, updateStepIndex, continueTour, pauseTour, endTour} = this.props;
+            const {updateStepIndex, continueTour, pauseTour, endTour} = this.props;
             if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status) && this.props.run) {
                 // Need to set our running state to false, so we can restart if we click start again.
                 endTour();
@@ -144,6 +144,7 @@ const TourHOC = function (WrappedComponent) {
                 pauseTour();
 
                 let intervalToDragAndDrop = setInterval(() => {
+                    const {latestBlock} = this.props;
                     if (latestBlock) {
                         continueTour(index + (action === ACTIONS.PREV ? -1 : 1));
                         clearInterval(intervalToDragAndDrop);
